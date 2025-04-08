@@ -1,11 +1,11 @@
 const express = require("express");
 const app = express();
-const productRoutes = require("./routes/productroutes");
+const propertyRoutes = require("./routes/propertyroutes");
 
 // Middleware
 app.use(express.json());
 
 // Routes
-app.use("/api", productRoutes);
+app.use("/api", propertyRoutes);
 
 module.exports = app;

@@ -20,7 +20,11 @@ const PropertySchema = mongoose.Schema(
       type: String,
       required: [true, "Price type is required"],
     },
-    location: {
+    status: {
+      type: String,
+      required: [true, "Status type is required"],
+    },
+    address: {
       type: String,
       required: [true, "Location is required"],
       minlength: 3

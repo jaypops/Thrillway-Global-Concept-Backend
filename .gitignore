@@ -1,5 +1,4 @@
 node_modules
 
-# Environment variables
+/public/uploads/
 .env
-.env.local

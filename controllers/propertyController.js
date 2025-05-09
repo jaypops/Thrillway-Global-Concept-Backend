@@ -17,18 +17,39 @@ exports.createProperty = async (req, res) => {
       propertySize,
       features,
       isAvailable,
-      images,
-      documents,
+      images = [],
+      documents = [],
     } = req.body;
 
-    // Required fields validation
-    if (!title || !price || !propertyType || !address) {
+    // Validate required fields
+    const requiredFields = { title, price, propertyType, address };
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
       return res.status(400).json({
-        message: "Title, price, property type, and address are required",
+        message: `Missing required fields: ${missingFields.join(', ')}`,
+        missingFields,
       });
     }
 
-    // ===== 2. Create Property Document =====
+    // Validate features as an object
+    const validFeatures = {};
+    const featureKeys = [
+      "swimmingPool",
+      "garage",
+      "balcony",
+      "security",
+      "garden",
+      "airConditioning",
+      "furnished",
+      "parking",
+    ];
+    featureKeys.forEach((key) => {
+      validFeatures[key] = features && typeof features === "object" && features[key] ? true : false;
+    });
+
     const newProperty = new Property({
       title,
       description,
@@ -37,19 +58,17 @@ exports.createProperty = async (req, res) => {
       propertyType,
       status,
       address,
-      rooms: rooms ? Number(rooms) : undefined,
-      bathrooms: bathrooms ? Number(bathrooms) : undefined,
+      rooms,
+      bathrooms,
       propertySize: propertySize ? Number(propertySize) : undefined,
-      features: Array.isArray(features) ? features : [],
+      features: validFeatures,
       images: Array.isArray(images) ? images : [],
       documents: Array.isArray(documents) ? documents : [],
       isAvailable: isAvailable !== undefined ? isAvailable : true,
     });
 
-    // ===== 3. Save to Database =====
     const savedProperty = await newProperty.save();
 
-    // ===== 4. Send Response =====
     res.status(201).json({
       success: true,
       message: "Property created successfully",
@@ -57,14 +76,12 @@ exports.createProperty = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating property:", error);
-
     if (error.name === "ValidationError") {
       return res.status(400).json({
         message: "Validation error",
         errors: error.errors,
       });
     }
-
     res.status(500).json({
       message: "Server error while creating property",
       error: error.message,
@@ -106,18 +123,67 @@ exports.getProperty = async (req, res) => {
   }
 };
 
-// Update a Property
+
 exports.updateProperty = async (req, res) => {
   try {
-    const property = await Property.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Validate required fields
+    const requiredFields = { title: updates.title, price: updates.price, propertyType: updates.propertyType, address: updates.address };
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        message: `Missing required fields: ${missingFields.join(', ')}`,
+        missingFields,
+      });
+    }
+
+    // Validate features as an object
+    const validFeatures = {};
+    const featureKeys = [
+      "swimmingPool",
+      "garage",
+      "balcony",
+      "security",
+      "garden",
+      "airConditioning",
+      "furnished",
+      "parking",
+    ];
+    featureKeys.forEach((key) => {
+      validFeatures[key] = updates.features && typeof updates.features === "object" && updates.features[key] ? true : false;
     });
-    if (!property) {
+
+    const updateData = {
+      title: updates.title,
+      description: updates.description,
+      price: Number(updates.price),
+      priceType: updates.priceType,
+      propertyType: updates.propertyType,
+      status: updates.status,
+      address: updates.address,
+      rooms: updates.rooms,
+      bathrooms: updates.bathrooms,
+      propertySize: updates.propertySize ? Number(updates.propertySize) : undefined,
+      features: validFeatures,
+      isAvailable: updates.isAvailable ?? true,
+      images: Array.isArray(updates.images) ? updates.images : [],
+      documents: Array.isArray(updates.documents) ? updates.documents : [],
+      updatedAt: new Date(),
+    };
+
+    const updatedProperty = await Property.findByIdAndUpdate(id, updateData, { new: true });
+    if (!updatedProperty) {
       return res.status(404).json({ message: "Property not found" });
     }
-    res.status(200).json(property);
+    res.status(200).json({ message: "Property updated successfully", property: updatedProperty });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error updating property:", error);
+    res.status(500).json({ message: "Error updating property", error: error.message });
   }
 };
 

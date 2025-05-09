@@ -30,11 +30,11 @@ const PropertySchema = mongoose.Schema(
       minlength: 3
     },
     rooms: {
-      type: Number,
+      type: String,
       required: false
     },
     bathrooms: {
-      type: Number,
+      type: String,
       required: false
     },
     propertyType: {

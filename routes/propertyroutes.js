@@ -8,5 +8,6 @@ router.get("/propertys", propertyController.getPropertys);
 router.get("/propertys/:id", propertyController.getProperty);
 router.patch("/propertys/:id", propertyController.updateProperty);
 router.delete("/propertys/:id", propertyController.deleteProperty);
+router.delete("/propertys", propertyController.deleteAllPropertys)
 
 module.exports = router;

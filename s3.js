@@ -28,7 +28,7 @@ const generateUploadURL = async (fileType = "general") => {
     const command = new PutObjectCommand({
       Bucket: bucketName,
       Key: `${folder}/${fileName}`,
-      ContentType: "application/octet-stream", // or customize based on file type
+      ContentType: "application/octet-stream", 
     });
   
     const uploadURL = await getSignedUrl(s3, command, { expiresIn: 60 });

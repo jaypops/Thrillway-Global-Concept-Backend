@@ -73,7 +73,7 @@ exports.createProperty = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Property created successfully",
-      property: savedProperty,
+      property: savedProperty,  
     });
   } catch (error) {
     console.error("Error creating property:", error);

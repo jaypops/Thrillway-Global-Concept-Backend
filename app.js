@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan"); 
-const propertyRoutes = require("./routes/propertyroutes"); 
+const GRoutes = require("./routes/GRoutes"); 
 const app = express();
 
 
@@ -17,7 +17,7 @@ app.use(express.json());
 // Request logging
 app.use(morgan("dev"));
 
-app.use("/api", propertyRoutes);
+app.use("/api", GRoutes);
 // Health check endpoint
 app.get("/health", (req, res) => res.status(200).json({ status: "ok" }));
 

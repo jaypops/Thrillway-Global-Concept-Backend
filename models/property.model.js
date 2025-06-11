@@ -5,12 +5,12 @@ const PropertySchema = mongoose.Schema(
     title: {
       type: String,
       required: [true, "Title must be at least 5 characters"],
-      minlength: 5
+      minlength: 5,
     },
     description: {
       type: String,
       required: [true, "Description must be at least 20 characters"],
-      minlength: 20
+      minlength: 20,
     },
     price: {
       type: Number,
@@ -27,15 +27,15 @@ const PropertySchema = mongoose.Schema(
     address: {
       type: String,
       required: [true, "Location is required"],
-      minlength: 3
+      minlength: 3,
     },
     rooms: {
       type: String,
-      required: false
+      required: false,
     },
     bathrooms: {
       type: String,
-      required: false
+      required: false,
     },
     propertyType: {
       type: String,
@@ -47,7 +47,7 @@ const PropertySchema = mongoose.Schema(
     },
     isAvailable: {
       type: Boolean,
-      default: true
+      default: true,
     },
     features: {
       swimmingPool: { type: Boolean, default: false },
@@ -57,19 +57,19 @@ const PropertySchema = mongoose.Schema(
       garden: { type: Boolean, default: false },
       airConditioning: { type: Boolean, default: false },
       furnished: { type: Boolean, default: false },
-      parking: { type: Boolean, default: false }
+      parking: { type: Boolean, default: false },
     },
     images: {
-      type: [String], 
-      required: false
+      type: [String],
+      required: false,
     },
     documents: {
-      type: [String], 
-      required: false
-    }
+      type: [String],
+      required: false,
+    },
   },
   {
-    timestamps: true, 
+    timestamps: true,
   }
 );
 

@@ -30,6 +30,11 @@ const AccountSchema = mongoose.Schema(
       type: String,
       required: [true, "Address required"],
     },
+    password: {
+      type: String,
+      required: [true, "Password required"],
+      unique: true, 
+    },
     images: {
       type: [String], 
       default: [], 

@@ -11,7 +11,7 @@ const AccountSchema = mongoose.Schema(
       type: String,
       required: [true, "Username must be at least 3 characters"],
       minlength: 3,
-      unique: true, 
+      unique: true,
     },
     telephone: {
       type: String,
@@ -24,7 +24,7 @@ const AccountSchema = mongoose.Schema(
     email: {
       type: String,
       required: [true, "Email required"],
-      unique: true, 
+      unique: true,
     },
     address: {
       type: String,
@@ -33,15 +33,20 @@ const AccountSchema = mongoose.Schema(
     password: {
       type: String,
       required: [true, "Password required"],
-      unique: true, 
+      unique: true,
     },
     images: {
-      type: [String], 
-      default: [], 
+      type: [String],
+      default: [],
     },
     startDate: {
       type: String,
       required: [true, "Start date required"],
+    },
+    role: {
+      type: String,
+      enum: ["admin", "fieldAgent", "customerAgent"],
+      default: "admin",
     },
   },
   {
@@ -50,4 +55,4 @@ const AccountSchema = mongoose.Schema(
 );
 
 const Account = mongoose.model("Account", AccountSchema);
-module.exports = Account
+module.exports = Account;

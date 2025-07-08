@@ -1,8 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const propertyController = require('../controllers/propertyController');
-const accountController = require('../controllers/accountController');
-const authMiddleware = require('../middleware/auth');
+const {
+  createAccount,
+  getAccounts,
+  deleteAccount,
+  loginAccount,
+  verifyToken,
+} = require('../controllers/accountController');
+const { authMiddleware, restrictToAdmin } = require('../middleware/auth');
 
 // Property routes
 router.post('/propertys', propertyController.createProperty);
@@ -14,10 +20,9 @@ router.delete('/propertys/:id', propertyController.deleteProperty);
 router.delete('/propertys', propertyController.deleteAllPropertys);
 
 // Account routes
-router.post('/account', accountController.createAccount);
-router.get('/account', authMiddleware, accountController.getAccounts);
-router.delete('/account/:id', authMiddleware, accountController.deleteAccount);
-router.post('/account/login', accountController.loginAccount);
-router.get('/auth/account/verify', authMiddleware, accountController.verifyToken);
-
+router.post('/account', authMiddleware, restrictToAdmin, createAccount);
+router.get('/account', authMiddleware, restrictToAdmin, getAccounts);
+router.delete('/account/:id', authMiddleware, restrictToAdmin, deleteAccount);
+router.post('/account/login', loginAccount);
+router.get('/auth/account/verify', authMiddleware, verifyToken);
 module.exports = router;

@@ -7,7 +7,7 @@ require("dotenv").config();
 const randomBytes = promisify(crypto.randomBytes);
 
 const region = "eu-north-1";
-const bucketName = "thrillway-global-concept-bucket";
+const bucketName = "thrillway-bucket";
 const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
 const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 

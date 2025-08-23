@@ -48,6 +48,10 @@ const AccountSchema = mongoose.Schema(
       enum: ["admin", "fieldAgent", "customerAgent"],
       default: "admin",
     },
+    // invitationToken: {
+    //   type: String,
+    //   required: [true, "Invitation token required"],
+    // },
   },
   {
     timestamps: true,

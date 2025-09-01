@@ -1,7 +1,7 @@
 const Property = require("../models/property.model");
 const { generateUploadURL } = require("../s3");
 const { S3Client, DeleteObjectCommand } = require("@aws-sdk/client-s3");
-
+require("dotenv").config();
 
 exports.createProperty = async (req, res) => {
   try {
@@ -30,7 +30,7 @@ exports.createProperty = async (req, res) => {
 
     if (missingFields.length > 0) {
       return res.status(400).json({
-        message: `Missing required fields: ${missingFields.join(', ')}`,
+        message: `Missing required fields: ${missingFields.join(", ")}`,
         missingFields,
       });
     }
@@ -48,7 +48,10 @@ exports.createProperty = async (req, res) => {
       "parking",
     ];
     featureKeys.forEach((key) => {
-      validFeatures[key] = features && typeof features === "object" && features[key] ? true : false;
+      validFeatures[key] =
+        features && typeof features === "object" && features[key]
+          ? true
+          : false;
     });
 
     const newProperty = new Property({
@@ -73,7 +76,7 @@ exports.createProperty = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Property created successfully",
-      property: savedProperty,  
+      property: savedProperty,
     });
   } catch (error) {
     console.error("Error creating property:", error);
@@ -93,13 +96,15 @@ exports.createProperty = async (req, res) => {
 //Get URL
 exports.getURL = async (req, res) => {
   try {
-    const { type } = req.query; 
-    const url = await generateUploadURL(type);
+    const { folder = "uploads", mimeType = "application/octet-stream" } = req.query;
+    const url = await generateUploadURL(folder, mimeType);
     res.send({ url });
   } catch (error) {
+    console.error("Error generating S3 URL:", error); // 🔥 log error
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // Get all Properties
 exports.getPropertys = async (req, res) => {
@@ -123,7 +128,6 @@ exports.getProperty = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION,
@@ -211,7 +215,9 @@ exports.updateProperty = async (req, res) => {
       address: updates.address,
       rooms: updates.rooms ? Number(updates.rooms) : undefined,
       bathrooms: updates.bathrooms ? Number(updates.bathrooms) : undefined,
-      propertySize: updates.propertySize ? Number(updates.propertySize) : undefined,
+      propertySize: updates.propertySize
+        ? Number(updates.propertySize)
+        : undefined,
       features: validFeatures,
       isAvailable: updates.isAvailable ?? true,
       images: Array.isArray(updates.images) ? updates.images : [],
@@ -239,7 +245,7 @@ exports.updateProperty = async (req, res) => {
   }
 };
 
-// Delete a Property 
+// Delete a Property
 exports.deleteProperty = async (req, res) => {
   try {
     const property = await Property.findByIdAndDelete(req.params.id);
@@ -255,7 +261,7 @@ exports.deleteProperty = async (req, res) => {
 //Delete all Property
 exports.deleteAllPropertys = async (req, res) => {
   try {
-    const { ids } = req.body; 
+    const { ids } = req.body;
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({
         success: false,
@@ -268,7 +274,7 @@ exports.deleteAllPropertys = async (req, res) => {
         success: false,
         message: "No properties found with the provided IDs",
       });
-    }// or customize based on file type
+    } // or customize based on file type
     res.status(200).json({
       success: true,
       message: `Deleted ${result.deletedCount} properties successfully`,

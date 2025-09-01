@@ -3,11 +3,10 @@ const jwt = require("jsonwebtoken");
 const Account = require("../models/account.model");
 require("dotenv").config();
 
-
 exports.generateInviteLink = async (req, res) => {
   try {
     const { role } = req.body;
-    
+
     if (!role) {
       return res.status(400).json({
         success: false,
@@ -24,7 +23,7 @@ exports.generateInviteLink = async (req, res) => {
     }
 
     const invitationToken = jwt.sign(
-      { role, type: 'invitation' },
+      { role, type: "invitation" },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
@@ -37,7 +36,7 @@ exports.generateInviteLink = async (req, res) => {
       message: "Invitation link generated successfully",
       invitationLink,
       invitationToken,
-      expiresIn: "24 hours"
+      expiresIn: "24 hours",
     });
   } catch (error) {
     console.error("Error generating invite link:", error);
@@ -48,6 +47,7 @@ exports.generateInviteLink = async (req, res) => {
     });
   }
 };
+
 
 exports.createAccount = async (req, res) => {
   try {
@@ -62,7 +62,7 @@ exports.createAccount = async (req, res) => {
       startDate,
       images = [],
       role,
-      invitationToken
+      invitationToken,
     } = req.body;
     if (
       !name ||
@@ -88,7 +88,7 @@ exports.createAccount = async (req, res) => {
       });
     }
 
-     if (!invitationToken) {
+    if (!invitationToken) {
       return res.status(400).json({
         success: false,
         message: "Invitation token is required",
@@ -116,9 +116,9 @@ exports.createAccount = async (req, res) => {
       password: hashedPassword,
       startDate,
       images: Array.isArray(images) ? images : [images],
-       role: decoded.role || "fieldAgent",
+      role: decoded.role || "fieldAgent",
     });
-    const savedAccount = await newAccount.save()
+    const savedAccount = await newAccount.save();
 
     res.status(201).json({
       success: true,
@@ -221,20 +221,20 @@ exports.loginAccount = async (req, res) => {
 exports.verifyToken = async (req, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "User not authenticated" 
+      return res.status(401).json({
+        success: false,
+        message: "User not authenticated",
       });
     }
-    
-    res.status(200).json({ 
-      success: true, 
-      user: req.user 
+
+    res.status(200).json({
+      success: true,
+      user: req.user,
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: "Server error during token verification" 
+    res.status(500).json({
+      success: false,
+      message: "Server error during token verification",
     });
   }
 };
@@ -243,9 +243,9 @@ exports.validateInvitation = async (req, res) => {
   try {
     const { token } = req.query;
     if (!token) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "No token provided" 
+      return res.status(400).json({
+        success: false,
+        message: "No token provided",
       });
     }
 
@@ -255,36 +255,36 @@ exports.validateInvitation = async (req, res) => {
     } catch (error) {
       console.error("Token verification failed:", error.message);
       if (error.name === "TokenExpiredError") {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invitation token has expired" 
+        return res.status(401).json({
+          success: false,
+          message: "Invitation token has expired",
         });
       }
-      return res.status(401).json({ 
-        success: false, 
-        message: "Invalid invitation token" 
+      return res.status(401).json({
+        success: false,
+        message: "Invalid invitation token",
       });
     }
 
-    if (decoded.type !== 'invitation') {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Token is not an invitation token" 
+    if (decoded.type !== "invitation") {
+      return res.status(401).json({
+        success: false,
+        message: "Token is not an invitation token",
       });
     }
 
-    res.set('Cache-Control', 'no-store');
+    res.set("Cache-Control", "no-store");
     res.status(200).json({
       success: true,
       role: decoded.role || "fieldAgent",
-      message: "Invitation token is valid"
+      message: "Invitation token is valid",
     });
   } catch (error) {
     console.error("Error validating invitation token:", error.message);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Server error during token validation",
-      error: error.message 
+      error: error.message,
     });
   }
 };

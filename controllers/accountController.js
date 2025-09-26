@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const Account = require("../models/account.model");
+const Token = require("../models/token.model");
 require("dotenv").config();
 
 exports.generateInviteLink = async (req, res) => {
@@ -173,6 +174,67 @@ exports.deleteAccount = async (req, res) => {
   }
 };
 
+
+exports.storeToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    const userId = req.userId;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: "Token is required",
+      });
+    }
+
+    const newToken = new Token({
+      userId,
+      token,
+    });
+
+    await newToken.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Token stored successfully",
+    });
+  } catch (error) {
+    console.error("Error storing token:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while storing token",
+      error: error.message,
+    });
+  }
+};
+
+exports.getToken = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const tokenDoc = await Token.findOne({ userId }).sort({ createdAt: -1 });
+
+    if (!tokenDoc) {
+      return res.status(404).json({
+        success: false,
+        message: "No token found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      token: tokenDoc.token,
+    });
+  } catch (error) {
+    console.error("Error retrieving token:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while retrieving token",
+      error: error.message,
+    });
+  }
+};
+
 exports.loginAccount = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -183,6 +245,7 @@ exports.loginAccount = async (req, res) => {
         message: "Username and password are required",
       });
     }
+    
     const user = await Account.findOne({ username });
     if (!user) {
       return res.status(401).json({
@@ -190,6 +253,7 @@ exports.loginAccount = async (req, res) => {
         message: "Invalid credentials",
       });
     }
+    
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return res.status(401).json({
@@ -197,11 +261,20 @@ exports.loginAccount = async (req, res) => {
         message: "Invalid credentials",
       });
     }
+    
     const token = jwt.sign(
       { _id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
+    
+    const newToken = new Token({
+      userId: user._id,
+      token,
+    });
+    
+    await newToken.save();
+    
     res.status(200).json({
       success: true,
       message: "Login successful",
@@ -213,6 +286,26 @@ exports.loginAccount = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error while logging in",
+      error: error.message,
+    });
+  }
+};
+
+exports.logoutAccount = async (req, res) => {
+  try {
+    const token = req.headers.authorization.split(" ")[1];
+    
+    await Token.findOneAndDelete({ token });
+    
+    res.status(200).json({
+      success: true,
+      message: "Logout successful",
+    });
+  } catch (error) {
+    console.error("Error logging out:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while logging out",
       error: error.message,
     });
   }

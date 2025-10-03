@@ -8,7 +8,7 @@ const app = express();
 // Enhanced CORS configuration
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin:[ "http://localhost:5173", "https://thrillway-global-concept.vercel.app/"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"]
   })

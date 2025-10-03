@@ -100,7 +100,7 @@ exports.getURL = async (req, res) => {
     const url = await generateUploadURL(folder, mimeType);
     res.send({ url });
   } catch (error) {
-    console.error("Error generating S3 URL:", error); // 🔥 log error
+    console.error("Error generating S3 URL:", error);
     res.status(500).json({ message: error.message });
   }
 };

@@ -41,14 +41,20 @@ exports.generateInviteLink = async (req, res) => {
     });
   } catch (error) {
     console.error("Error generating invite link:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while generating invite link",
-      error: error.message,
-    });
+    if (process.env.NODE_ENV === "development") {
+      res.status(500).json({
+        success: false,
+        message: "Server error while generating invite link",
+        error: error.message,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
   }
 };
-
 
 exports.createAccount = async (req, res) => {
   try {
@@ -174,7 +180,6 @@ exports.deleteAccount = async (req, res) => {
   }
 };
 
-
 exports.storeToken = async (req, res) => {
   try {
     const { token } = req.body;
@@ -245,7 +250,7 @@ exports.loginAccount = async (req, res) => {
         message: "Username and password are required",
       });
     }
-    
+
     const user = await Account.findOne({ username });
     if (!user) {
       return res.status(401).json({
@@ -253,7 +258,7 @@ exports.loginAccount = async (req, res) => {
         message: "Invalid credentials",
       });
     }
-    
+
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return res.status(401).json({
@@ -261,20 +266,20 @@ exports.loginAccount = async (req, res) => {
         message: "Invalid credentials",
       });
     }
-    
+
     const token = jwt.sign(
       { _id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
-    
+
     const newToken = new Token({
       userId: user._id,
       token,
     });
-    
+
     await newToken.save();
-    
+
     res.status(200).json({
       success: true,
       message: "Login successful",
@@ -294,9 +299,9 @@ exports.loginAccount = async (req, res) => {
 exports.logoutAccount = async (req, res) => {
   try {
     const token = req.headers.authorization.split(" ")[1];
-    
+
     await Token.findOneAndDelete({ token });
-    
+
     res.status(200).json({
       success: true,
       message: "Logout successful",

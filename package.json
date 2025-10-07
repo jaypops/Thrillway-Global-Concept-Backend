@@ -16,6 +16,7 @@
     "@aws-sdk/credential-provider-env": "^3.775.0",
     "@aws-sdk/s3-request-presigner": "^3.787.0",
     "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",

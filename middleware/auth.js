@@ -5,19 +5,21 @@ const Token = require("../models/token.model");
 require("dotenv").config();
 
 const authMiddleware = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res
-      .status(401)
-      .json({ success: false, message: "No token provided" });
-  }
-
-  const token = authHeader.split(" ")[1];
   try {
+    // Get token from cookie instead of Authorization header
+    const token = req.cookies.auth_token;
+    
+    if (!token) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "No authentication token found" 
+      });
+    }
+
     // Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Check if token exists in database
+    // Check if token exists in database (optional but recommended for security)
     const storedToken = await Token.findOne({ 
       userId: decoded._id, 
       token: token 
@@ -30,12 +32,14 @@ const authMiddleware = async (req, res, next) => {
       });
     }
     
+    // Get user from database
     const user = await Account.findById(decoded._id).select("-password");
     
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
     }
     
     req.user = user; 
@@ -43,6 +47,7 @@ const authMiddleware = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("Authentication error:", error);
+    
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({ 
         success: false, 
@@ -57,17 +62,19 @@ const authMiddleware = async (req, res, next) => {
       });
     }
     
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid or expired token" });
+    return res.status(500).json({ 
+      success: false, 
+      message: "Authentication error" 
+    });
   }
 };
 
 const restrictToAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
-    return res
-      .status(403)
-      .json({ success: false, message: "Access denied. Admins only." });
+    return res.status(403).json({ 
+      success: false, 
+      message: "Access denied. Admins only." 
+    });
   }
   next();
 };

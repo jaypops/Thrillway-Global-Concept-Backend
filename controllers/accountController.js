@@ -4,23 +4,33 @@ const Account = require("../models/account.model");
 const Token = require("../models/token.model");
 require("dotenv").config();
 
+const isProduction = process.env.NODE_ENV === "production";
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProduction, 
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 3600000,
+  path: "/",
+};
+
+const clearCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  path: "/",
+};
+
 exports.generateInviteLink = async (req, res) => {
   try {
     const { role } = req.body;
 
     if (!role) {
-      return res.status(400).json({
-        success: false,
-        message: "Role is required",
-      });
+      return res.status(400).json({ success: false, message: "Role is required" });
     }
 
-    const isAdmin = req.user?.role === "admin";
-    if (!isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "Only admins can generate invite links",
-      });
+    if (req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Only admins can generate invite links" });
     }
 
     const invitationToken = jwt.sign(
@@ -36,23 +46,16 @@ exports.generateInviteLink = async (req, res) => {
       success: true,
       message: "Invitation link generated successfully",
       invitationLink,
-      invitationToken,
       expiresIn: "24 hours",
     });
   } catch (error) {
     console.error("Error generating invite link:", error);
-    if (process.env.NODE_ENV === "development") {
-      res.status(500).json({
-        success: false,
-        message: "Server error while generating invite link",
-        error: error.message,
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
+    res.status(500).json({
+      success: false,
+      message: process.env.NODE_ENV === "development"
+        ? error.message
+        : "Internal server error",
+    });
   }
 };
 
@@ -71,48 +74,28 @@ exports.createAccount = async (req, res) => {
       role,
       invitationToken,
     } = req.body;
-    if (
-      !name ||
-      !username ||
-      !telephone ||
-      !emergencyContact ||
-      !email ||
-      !address ||
-      !startDate ||
-      !password
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields are required",
-      });
+
+    if (!name || !username || !telephone || !emergencyContact || !email || !address || !startDate || !password) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
-    const isAdmin = req.user?.role === "admin";
-    if (role === "admin" && !isAdmin) {
-      return res.status(403).json({
-        success: false,
-        message: "Only admins can create admin accounts",
-      });
+    if (role === "admin" && req.user?.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Only admins can create admin accounts" });
     }
 
     if (!invitationToken) {
-      return res.status(400).json({
-        success: false,
-        message: "Invitation token is required",
-      });
+      return res.status(400).json({ success: false, message: "Invitation token is required" });
     }
 
     let decoded;
     try {
       decoded = jwt.verify(invitationToken, process.env.JWT_SECRET);
-    } catch (error) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid or expired invitation token",
-      });
+    } catch {
+      return res.status(401).json({ success: false, message: "Invalid or expired invitation token" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 13);
+
     const newAccount = new Account({
       name,
       username,
@@ -125,6 +108,7 @@ exports.createAccount = async (req, res) => {
       images: Array.isArray(images) ? images : [images],
       role: decoded.role || "fieldAgent",
     });
+
     const savedAccount = await newAccount.save();
 
     res.status(201).json({
@@ -138,134 +122,63 @@ exports.createAccount = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Validation error",
-        errors: Object.values(error.errors).map((err) => err.message),
+        errors: Object.values(error.errors).map((e) => e.message),
       });
     }
+
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
         message: "Username or email already exists",
       });
     }
+
     res.status(500).json({
       success: false,
       message: "Server error while creating account",
-      error: error.message,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
 
+
 exports.getAccounts = async (req, res) => {
   try {
-    const accounts = await Account.find({});
-    res.status(200).json(accounts);
+    const accounts = await Account.find().select("-password");
+    res.status(200).json({ success: true, accounts });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 exports.deleteAccount = async (req, res) => {
   try {
     const account = await Account.findByIdAndDelete(req.params.id);
     if (!account) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Account not found" });
+      return res.status(404).json({ success: false, message: "Account not found" });
     }
-    res
-      .status(200)
-      .json({ success: true, message: "Account deleted successfully" });
+
+    res.status(200).json({ success: true, message: "Account deleted successfully" });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-exports.storeToken = async (req, res) => {
-  try {
-    const { token } = req.body;
-    const userId = req.userId;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "Token is required",
-      });
-    }
-
-    const newToken = new Token({
-      userId,
-      token,
-    });
-
-    await newToken.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Token stored successfully",
-    });
-  } catch (error) {
-    console.error("Error storing token:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while storing token",
-      error: error.message,
-    });
-  }
-};
-
-exports.getToken = async (req, res) => {
-  try {
-    const userId = req.userId;
-
-    const tokenDoc = await Token.findOne({ userId }).sort({ createdAt: -1 });
-
-    if (!tokenDoc) {
-      return res.status(404).json({
-        success: false,
-        message: "No token found",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      token: tokenDoc.token,
-    });
-  } catch (error) {
-    console.error("Error retrieving token:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while retrieving token",
-      error: error.message,
-    });
-  }
-};
 
 exports.loginAccount = async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Username and password are required",
-      });
-    }
+    if (!username || !password)
+      return res.status(400).json({ success: false, message: "Username and password are required" });
 
     const user = await Account.findOne({ username });
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
+    if (!user)
+      return res.status(401).json({ success: false, message: "Invalid username or password" });
 
     const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials",
-      });
-    }
+    if (!isValid)
+      return res.status(401).json({ success: false, message: "Invalid username or password" });
 
     const token = jwt.sign(
       { _id: user._id, role: user.role },
@@ -273,102 +186,67 @@ exports.loginAccount = async (req, res) => {
       { expiresIn: "1h" }
     );
 
-    const newToken = new Token({
-      userId: user._id,
-      token,
-    });
+    const existingTokens = await Token.find({ userId: user._id }).sort({ createdAt: -1 });
+    if (existingTokens.length >= 5) {
+      const oldTokens = existingTokens.slice(5);
+      await Token.deleteMany({ _id: { $in: oldTokens.map((t) => t._id) } });
+    }
 
-    await newToken.save();
+    await new Token({ userId: user._id, token }).save();
+
+    console.log("🔐 Cookie options in use:", cookieOptions);
+
+    res.cookie("auth_token", token, cookieOptions);
 
     res.status(200).json({
       success: true,
       message: "Login successful",
-      token,
-      account: user,
+      account: { ...user.toObject(), password: undefined },
     });
   } catch (error) {
     console.error("Error logging in:", error);
     res.status(500).json({
       success: false,
       message: "Server error while logging in",
-      error: error.message,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
 
 exports.logoutAccount = async (req, res) => {
   try {
-    const token = req.headers.authorization.split(" ")[1];
+    const token = req.cookies.auth_token;
+    if (token) await Token.findOneAndDelete({ token });
 
-    await Token.findOneAndDelete({ token });
+    res.clearCookie("auth_token", clearCookieOptions);
 
-    res.status(200).json({
-      success: true,
-      message: "Logout successful",
-    });
+    res.status(200).json({ success: true, message: "Logout successful" });
   } catch (error) {
     console.error("Error logging out:", error);
     res.status(500).json({
       success: false,
       message: "Server error while logging out",
-      error: error.message,
     });
   }
 };
 
-exports.verifyToken = async (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "User not authenticated",
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      user: req.user,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Server error during token verification",
-    });
+exports.verifyToken = (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: "User not authenticated" });
   }
+  res.status(200).json({ success: true, user: req.user });
 };
+
 
 exports.validateInvitation = async (req, res) => {
   try {
     const { token } = req.query;
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: "No token provided",
-      });
-    }
+    if (!token) return res.status(400).json({ success: false, message: "No token provided" });
 
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (error) {
-      console.error("Token verification failed:", error.message);
-      if (error.name === "TokenExpiredError") {
-        return res.status(401).json({
-          success: false,
-          message: "Invitation token has expired",
-        });
-      }
-      return res.status(401).json({
-        success: false,
-        message: "Invalid invitation token",
-      });
-    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (decoded.type !== "invitation") {
-      return res.status(401).json({
-        success: false,
-        message: "Token is not an invitation token",
-      });
+      return res.status(401).json({ success: false, message: "Token is not an invitation token" });
     }
 
     res.set("Cache-Control", "no-store");
@@ -378,11 +256,9 @@ exports.validateInvitation = async (req, res) => {
       message: "Invitation token is valid",
     });
   } catch (error) {
-    console.error("Error validating invitation token:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Server error during token validation",
-      error: error.message,
-    });
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({ success: false, message: "Invitation token has expired" });
+    }
+    res.status(401).json({ success: false, message: "Invalid or expired invitation token" });
   }
 };

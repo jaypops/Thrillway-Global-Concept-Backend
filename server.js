@@ -9,7 +9,7 @@ const environment = process.env.NODE_ENV || "development";
   try {
     await connectDB();
     const server = app.listen(PORT, () => {
-      console.log(`✅ ${environment.toUpperCase()} server running on port ${PORT}`);
+      console.log(` ${environment.toUpperCase()} server running on port ${PORT}`);
     });
 
     process.on("SIGTERM", () => {
@@ -20,7 +20,7 @@ const environment = process.env.NODE_ENV || "development";
       });
     });
   } catch (error) {
-    console.error("❌ Failed to connect to database:", error.message);
+    console.error(" Failed to connect to database:", error.message);
     process.exit(1);
   }
 })();

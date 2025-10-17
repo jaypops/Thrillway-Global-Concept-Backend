@@ -3,6 +3,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const compression = require("compression");
+const cookieParser = require("cookie-parser");
 const GRoutes = require("./routes/GRoutes");
 
 const app = express();
@@ -10,6 +11,7 @@ const app = express();
 // Use security middleware
 app.use(helmet());
 app.use(compression());
+app.use(cookieParser());
 
 // Environment-based CORS configuration
 const allowedOrigins =
@@ -20,8 +22,10 @@ const allowedOrigins =
 app.use(
   cors({
     origin: allowedOrigins,
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    exposedHeaders: ["Set-Cookie"],
   })
 );
 

@@ -6,8 +6,7 @@ const {
   getAccounts,
   deleteAccount,
   loginAccount,
-  storeToken,
-  getToken,
+  logoutAccount, 
   verifyToken,
   generateInviteLink,
   validateInvitation,
@@ -29,8 +28,7 @@ router.post("/account/register", createAccount);
 router.get("/account", authMiddleware, restrictToAdmin, getAccounts);
 router.delete("/account/:id", authMiddleware, restrictToAdmin, deleteAccount);
 router.post("/account/login", loginAccount); 
-router.post("/account/token", authMiddleware, storeToken);
-router.get("/account/token", authMiddleware, getToken);
+router.post("/account/logout", logoutAccount); 
 router.get("/auth/account/verify", authMiddleware, verifyToken);
 router.post(
   "/account/invite",
@@ -39,4 +37,7 @@ router.post(
   generateInviteLink
 );
 router.get("/account/invite/validate", validateInvitation);
+
+
+
 module.exports = router;

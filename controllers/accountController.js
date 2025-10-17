@@ -39,7 +39,7 @@ exports.generateInviteLink = async (req, res) => {
       { expiresIn: "24h" }
     );
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const frontendUrl = process.env.FRONTEND_URL
     const invitationLink = `${frontendUrl}/account-management?role=${role}&token=${invitationToken}`;
 
     res.status(200).json({

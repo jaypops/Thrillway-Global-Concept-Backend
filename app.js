@@ -16,7 +16,7 @@ app.use(cookieParser());
 // Environment-based CORS configuration
 const allowedOrigins =
   process.env.NODE_ENV === "production"
-    ? ["https://thrillway-global-concept.vercel.app"]
+    ? ["https://thrillway-global-concept-4pnqpf1z2.vercel.app"]
     : ["http://localhost:5173"];
 
 app.use(

@@ -14,6 +14,14 @@ const cookieOptions = {
   path: "/",
 };
 
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 7 * 24 * 3600000, 
+  path: "/",
+};
+
 const clearCookieOptions = {
   httpOnly: true,
   secure: isProduction,
@@ -39,7 +47,7 @@ exports.generateInviteLink = async (req, res) => {
       { expiresIn: "24h" }
     );
 
-    const frontendUrl = process.env.FRONTEND_URL
+    const frontendUrl = process.env.FRONTEND_URL;
     const invitationLink = `${frontendUrl}/account-management?role=${role}&token=${invitationToken}`;
 
     res.status(200).json({
@@ -141,7 +149,6 @@ exports.createAccount = async (req, res) => {
   }
 };
 
-
 exports.getAccounts = async (req, res) => {
   try {
     const accounts = await Account.find().select("-password");
@@ -150,7 +157,6 @@ exports.getAccounts = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 exports.deleteAccount = async (req, res) => {
   try {
@@ -164,7 +170,6 @@ exports.deleteAccount = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 
 exports.loginAccount = async (req, res) => {
   try {
@@ -180,10 +185,16 @@ exports.loginAccount = async (req, res) => {
     if (!isValid)
       return res.status(401).json({ success: false, message: "Invalid username or password" });
 
-    const token = jwt.sign(
-      { _id: user._id, role: user.role },
+    const accessToken = jwt.sign(
+      { _id: user._id, role: user.role, type: "access" },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
+    );
+
+    const refreshToken = jwt.sign(
+      { _id: user._id, role: user.role, type: "refresh" },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
     const existingTokens = await Token.find({ userId: user._id }).sort({ createdAt: -1 });
@@ -192,11 +203,10 @@ exports.loginAccount = async (req, res) => {
       await Token.deleteMany({ _id: { $in: oldTokens.map((t) => t._id) } });
     }
 
-    await new Token({ userId: user._id, token }).save();
+    await new Token({ userId: user._id, token: refreshToken }).save();
 
-    console.log("🔐 Cookie options in use:", cookieOptions);
-
-    res.cookie("auth_token", token, cookieOptions);
+    res.cookie("auth_token", accessToken, cookieOptions);
+    res.cookie("refresh_token", refreshToken, refreshCookieOptions);
 
     res.status(200).json({
       success: true,
@@ -215,10 +225,14 @@ exports.loginAccount = async (req, res) => {
 
 exports.logoutAccount = async (req, res) => {
   try {
-    const token = req.cookies.auth_token;
-    if (token) await Token.findOneAndDelete({ token });
+    const accessToken = req.cookies.auth_token;
+    const refreshToken = req.cookies.refresh_token;
+
+    if (accessToken) await Token.findOneAndDelete({ token: accessToken });
+    if (refreshToken) await Token.findOneAndDelete({ token: refreshToken });
 
     res.clearCookie("auth_token", clearCookieOptions);
+    res.clearCookie("refresh_token", clearCookieOptions);
 
     res.status(200).json({ success: true, message: "Logout successful" });
   } catch (error) {
@@ -236,7 +250,6 @@ exports.verifyToken = (req, res) => {
   }
   res.status(200).json({ success: true, user: req.user });
 };
-
 
 exports.validateInvitation = async (req, res) => {
   try {
@@ -260,5 +273,93 @@ exports.validateInvitation = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invitation token has expired" });
     }
     res.status(401).json({ success: false, message: "Invalid or expired invitation token" });
+  }
+};
+
+exports.getCurrentUser = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "User not authenticated" });
+    }
+
+    const user = await Account.findById(req.user._id).select("-password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error("Error fetching current user:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while fetching current user",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+exports.refreshToken = async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) {
+      return res.status(401).json({ success: false, message: "No refresh token provided" });
+    }
+
+    const tokenRecord = await Token.findOne({ token: refreshToken });
+    if (!tokenRecord) {
+      return res.status(401).json({ success: false, message: "Invalid refresh token" });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+      if (decoded.type !== "refresh") {
+        return res.status(401).json({ success: false, message: "Invalid token type" });
+      }
+    } catch (error) {
+      if (error.name === "TokenExpiredError") {
+        await Token.findOneAndDelete({ token: refreshToken });
+        return res.status(401).json({ success: false, message: "Refresh token has expired" });
+      }
+      return res.status(401).json({ success: false, message: "Invalid refresh token" });
+    }
+
+    const user = await Account.findById(decoded._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const newAccessToken = jwt.sign(
+      { _id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    const newRefreshToken = jwt.sign(
+      { _id: user._id, role: user.role, type: "refresh" },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    await Token.findOneAndDelete({ token: refreshToken });
+    await new Token({ userId: user._id, token: newRefreshToken }).save();
+
+    res.cookie("auth_token", newAccessToken, cookieOptions);
+    res.cookie("refresh_token", newRefreshToken, refreshCookieOptions);
+
+    res.status(200).json({
+      success: true,
+      message: "Token refreshed successfully",
+    });
+  } catch (error) {
+    console.error("Error refreshing token:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while refreshing token",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
   }
 };

@@ -1,14 +1,12 @@
 // middleware/auth.js
 const jwt = require("jsonwebtoken");
 const Account = require("../models/account.model");
-const Token = require("../models/token.model");
 require("dotenv").config();
 
 const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from cookie instead of Authorization header
     const token = req.cookies.auth_token;
-    
+
     if (!token) {
       return res.status(401).json({ 
         success: false, 
@@ -16,65 +14,34 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Verify the token
+    // Verify JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Check if token exists in database (optional but recommended for security)
-    const storedToken = await Token.findOne({ 
-      userId: decoded._id, 
-      token: token 
-    });
-    
-    if (!storedToken) {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Invalid or expired token" 
-      });
-    }
-    
-    // Get user from database
+
+    // Fetch the user
     const user = await Account.findById(decoded._id).select("-password");
-    
     if (!user) {
       return res.status(404).json({ 
         success: false, 
         message: "User not found" 
       });
     }
-    
-    req.user = user; 
-    req.userId = decoded._id;
+
+    req.user = user;
     next();
   } catch (error) {
     console.error("Authentication error:", error);
-    
+
     if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Token expired" 
-      });
+      return res.status(401).json({ success: false, message: "Token expired" });
     }
-    
-    if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({ 
-        success: false, 
-        message: "Invalid token" 
-      });
-    }
-    
-    return res.status(500).json({ 
-      success: false, 
-      message: "Authentication error" 
-    });
+
+    return res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
 
 const restrictToAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({ 
-      success: false, 
-      message: "Access denied. Admins only." 
-    });
+    return res.status(403).json({ success: false, message: "Access denied. Admins only." });
   }
   next();
 };
